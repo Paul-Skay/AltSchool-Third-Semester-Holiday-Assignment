@@ -1,0 +1,66 @@
+---
+- name: Deploy NGINX web server
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - vars.yml
+  
+  tasks:
+  # Initial server setup
+    - name: Upgrade System
+      apt: upgrade=dist update_cache=yes force=yes
+        
+    - name: Set Timezone
+      timezone:
+        name: Africa/Lagos
+
+    - name: Allow SSH connection
+      community.general.ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Allow HTTP on port 80 for nginx
+      community.general.ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+
+    - name: Enable UFW
+      ufw: state=enabled
+
+    - name: Install nginx web server
+      apt:
+        name: nginx
+        state: present           
+
+    - name: Install php8.1-fpm
+      apt:
+        name: php8.1-fpm
+        state: present
+
+    - name: Copy nginx configuration to serve php file
+      template: src="{{ php_conf }}" dest="/etc/nginx/sites-available/{{ php_conf }}" owner=www-data group=www-data mode=0644
+
+    - name: Enable site
+      command: sudo ln -s "/etc/nginx/sites-available/{{ php_conf }}" /etc/nginx/sites-enabled/
+
+    - name: Copy index.php file to web root directory
+      ansible.builtin.copy:
+        src: "/home/{{ ansible_user }}"
+        dest: "{{ web_root_dir }}"
+        owner: "{{ ansible_user }}"
+        group: www-data
+        mode: '0775'
+        remote_src: yes
+
+      notify:
+        - Restart nginx
+
+  handlers:
+    - name: Restart nginx
+      service:
+        state: restarted
+        name: nginx
+        daemon_reload: yes
+
+

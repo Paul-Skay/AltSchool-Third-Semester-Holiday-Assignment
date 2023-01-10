@@ -1,0 +1,6 @@
+---
+ansible_user: ubuntu
+
+# Web Server Setup
+web_root_dir: /var/www/html
+php_conf: default
